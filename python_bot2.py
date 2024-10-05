@@ -4,7 +4,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import asyncio
-from crud_functions import get_all_products, is_included
+from crud_functions import get_all_products, is_included, add_user
 
 api = ''
 bot = Bot(token=api)
@@ -37,37 +37,36 @@ class RegistrationState(StatesGroup):# Для задания 14_5
     username = State()
     email = State()
     age = State()
-    balance = State(1000)
+    balance = 1000
 
 @dp.message_handler(text='Регистрация')# Для задания 14_5
 async def sing_up(message):
-    await message.answer('Введите имя пользователя (только латинский алфавит):')
+    await message.answer('Введите имя пользователя (только латинский алфавит):', parse_mode='HTML')
     await RegistrationState.username.set()
 
 @dp.message_handler(state=RegistrationState.username)# Для задания 14_5
 async def set_username(message, state):
-    username = message.text
-    if is_included(username):  # функция для проверки существования пользователя
-        await message.answer("Пользователь существует, введите другое имя:")
-    else:
-        await state.update_data(username=username)
+    await state.update_data(username=message.text)
+    data = await state.get_data()
+    if is_included(str(data['username'])) is False:  # функция для проверки существования пользователя
+        await message.answer('Введите свой email:', parse_mode='HTML')
         await RegistrationState.email.set()
-        await message.answer("Введите свой email:")
+    else:
+        await message.answer('Пользователь существует, введите другое имя:', parse_mode='HTML')
+        await RegistrationState.username.set()
 
 @dp.message_handler(state=RegistrationState.email)# Для задания 14_5
 async def set_email(message, state):
-    email = message.text
-    await state.update_data(email=email)
+    await state.update_data(email=message.text)
+    await message.answer('Введите свой возраст:', parse_mode='HTML')
     await RegistrationState.age.set()
-    await message.answer("Введите свой возраст:")
 
-@dp.message_handler(state=RegistrationState.age)# Для задания 14_5
+@dp.message_handler(state=RegistrationState.age)
 async def set_age(message, state):
-    age = message.text
-    await state.update_data(age=age)
-    user_data = await state.get_data()
-    username = user_data['username']
-    await message.answer("Регистрация завершена! Добро пожаловать, " + username)
+    await state.update_data(age=message.text)
+    data = await state.get_data()
+    add_user(str(data['username']), str(data['email']), int(data['age']))
+    await message.answer('Регистрация прошла успешно!', parse_mode='HTML')
     await state.finish()
 
 
